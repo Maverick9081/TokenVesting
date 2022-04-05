@@ -1,8 +1,9 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TokenVesting {
+contract TokenVesting is Ownable{
 
     uint private TotalSupply = 1e26;
     uint private denominator = 1000;
@@ -12,7 +13,7 @@ contract TokenVesting {
     uint private vestingDuration = cliff + (365 *day);
     IERC20 public NiceToken;
     
-    constructor(IERC20 token){
+    constructor(IERC20 token) Ownable(){
         NiceToken = IERC20(token);
     }
 
@@ -32,13 +33,15 @@ contract TokenVesting {
     mapping(address =>uint) public balnaces;
     mapping(Roles=>uint) public rewardPerRole;
 
-    function addReceipient(address person,Roles role)public {
+    function addReceipient(address person,Roles role)public onlyOwner {
         require(block.timestamp <cliff,"Can not add receipient after the cliff period");
         uint lastRewardUpdate = Shares[person].lastRewardUpdateTime;
         require(lastRewardUpdate == 0,"receipient should not be part of the program already");
         Shares[person].role = role;
+        roles[role]++;
         rewardPerRole[role] = getNewPercentage(role);
         Shares[person].lastRewardUpdateTime = cliff;
+        
     }
 
     function collect() public {
@@ -46,12 +49,13 @@ contract TokenVesting {
         updatebalance(msg.sender);
         uint amount = balnaces[msg.sender];
         require(amount >0,"Can't withdraw 0 tokens");
-        NiceToken.transfer(msg.sender, amount);
+        unchecked{
+            NiceToken.transfer(msg.sender,amount);}
         balnaces[msg.sender] = 0; 
     }
 
     function getNewPercentage(Roles role)internal view returns(uint) {
-        uint participants = roles[role] + 1;
+        uint participants = roles[role];
         uint rolePercentage;
         
         if(Roles.advisor == role){
@@ -67,13 +71,16 @@ contract TokenVesting {
     }
 
     function updatebalance(address user)  internal{
+        uint unPaidDays;
         uint percentage = rewardPerRole[Shares[user].role];
         uint dailyReward = TotalSupply *percentage /(denominator *365);
-        uint unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/day; 
+        if(block.timestamp >vestingDuration){
+             unPaidDays = (vestingDuration - Shares[user].lastRewardUpdateTime)/day; 
+        }
+        else {
+             unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/day;
+        } 
         balnaces[user] += dailyReward*unPaidDays;
-        Shares[user].lastRewardUpdateTime = block.timestamp;
+        Shares[user].lastRewardUpdateTime += (unPaidDays*day);
     }
-
-    
-
 }
