@@ -38,7 +38,7 @@ describe("Distribution per role",async function(){
     expect(await niceToken.balanceOf(vestingAddress)).to.equal("90000000000000000000000010");
   })
 
-  it("Reward splits as number of particapants increse",async function(){
+  it("Reward splits as number of particapants increse for a role",async function(){
     const [owner, add1,add2] = await ethers.getSigners();
 
     await tokenVesting.addReceipient(add1.address,1);
@@ -64,5 +64,41 @@ describe("Distribution per role",async function(){
     expect(await niceToken.balanceOf(add.address)).to.equal(await niceToken.balanceOf(add3.address));
     expect(await niceToken.balanceOf(vestingAddress)).to.equal("82600000000000000000000470");
 })
+
+})
+
+describe("Revertion Tests", async function(){
+
+  it("should revert when someone other than owner tries to add participant", async function(){
+    const [add1] = await ethers.getSigners();
+    
+    expect( tokenVesting.connect(add1).addReceipient(add1.address,1)).to.be.revertedWith("Ownable: caller is not the owner");
+  })
+
+  it("should revert when adding same particapnt twice ",async function(){
+    const [add1] = await ethers.getSigners();
+    
+    await tokenVesting.addReceipient(add1.address,1);
+    await expect( tokenVesting.addReceipient(add1.address,0)).to.be
+          .revertedWith("receipient should not be part of the program already");
+  })
+
+  it ("should revert when owner tries to add participant after the cliff period",async function(){
+    const [add] = await ethers.getSigners();
+
+    await expect(tokenVesting.addReceipient(add.address,0)).to.be.revertedWith("Can not add receipient after the cliff period")
+  })
+
+  it ("should revert when someone tries to withdraw 0 balance",async function(){
+    const [add] = await ethers.getSigners();
+
+    await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Can't withdraw 0 tokens");
+  })
+  
+  it("should revert if someone tries to collec reward before cliff period ends",async function(){
+    const [add] = await ethers.getSigners();
+
+    await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Cliff period is not over yet")
+  })
 
 })
