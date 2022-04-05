@@ -14,9 +14,9 @@ contract TokenVesting is Ownable{
 
     
     /**
-    @dev sets the address of NiceToken
-
-    @param token addres of token to distribute during vesting
+     *@dev sets the address of NiceToken
+     *
+     *@param token addres of token to distribute during vesting
      */
     constructor(IERC20 token) Ownable(){
         NiceToken = IERC20(token);
@@ -39,10 +39,10 @@ contract TokenVesting is Ownable{
     mapping(Roles=>uint) public rewardPerRole;
 
     /**
-    @dev adds new Receipient to vesting according to role
-
-    @param person is address of the person to be added to vesting
-    @param role is role to dedicate the person
+     *@dev adds new Receipient to vesting according to role
+     *
+     *@param person is address of the person to be added to vesting
+     *@param role is role to dedicate the person
      */
     function addReceipient(address person,Roles role)public onlyOwner {
         require(block.timestamp <cliff(),"Can not add receipient after the cliff period");
