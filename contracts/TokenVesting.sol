@@ -1,11 +1,11 @@
 pragma solidity ^0.8.0;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TokenVesting {
 
-    uint256 private TotalSupply = 1e26;
-    uint256 private denominator = 1000;
+    uint private TotalSupply = 1e26;
+    uint private denominator = 1000;
     uint private startTime = block.timestamp;
     uint private day = 86400;
     uint private cliff = startTime +(90 * day);
@@ -16,67 +16,64 @@ contract TokenVesting {
         NiceToken = IERC20(token);
     }
 
-    enum Roles {
+    enum Roles { 
         advisor,
-        partnerShip,
+        partnership,
         mentor
     }
 
     struct Receipients{
         Roles role;
-        uint percentages;
         uint lastRewardUpdateTime;
     }
 
     mapping(address=>Receipients) private Shares;
     mapping(Roles=>uint) private roles;
     mapping(address =>uint) public balnaces;
-
-    function getPercentage () public view returns(uint) {
-        return Shares[msg.sender].percentages;
-    }
+    mapping(Roles=>uint) public rewardPerRole;
 
     function addReceipient(address person,Roles role)public {
+        require(block.timestamp <cliff,"Can not add receipient after the cliff period");
+        uint lastRewardUpdate = Shares[person].lastRewardUpdateTime;
+        require(lastRewardUpdate == 0,"receipient should not be part of the program already");
         Shares[person].role = role;
-        Shares[person].percentages =getNewPercentage(role);
-        Shares[person].lastRewardUpdateTime = block.timestamp;
-    }
-
-    function shares(Roles role)internal  pure returns(uint){
-        if(Roles.advisor == role){
-            return 75;
-        }
-        else if(Roles.partnerShip == role){
-            return 100;
-        }
-        return 50;
-    } 
-
-    function getNewPercentage(Roles role)public view returns(uint) {
-        uint participants = roles[role];
-        return shares(role)/participants;
-    }
-
-    function updatebalance(address user)  internal{
-        uint unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/day; 
-        balnaces[user] += getdaily(user)*unPaidDays;
-        Shares[user].lastRewardUpdateTime = block.timestamp;
-    }
-
-    function getdaily(address user)public view returns(uint) {
-        uint percentage = getPercentage();
-        uint dailyReward = TotalSupply *percentage /(denominator *365);
-        return dailyReward;
+        rewardPerRole[role] = getNewPercentage(role);
+        Shares[person].lastRewardUpdateTime = cliff;
     }
 
     function collect() public {
         require(block.timestamp >= cliff, "Cliff period is not over yet");
         updatebalance(msg.sender);
         uint amount = balnaces[msg.sender];
+        require(amount >0,"Can't withdraw 0 tokens");
         NiceToken.transfer(msg.sender, amount);
-        balnaces[msg.sender] -= amount; 
+        balnaces[msg.sender] = 0; 
     }
 
+    function getNewPercentage(Roles role)internal view returns(uint) {
+        uint participants = roles[role] + 1;
+        uint rolePercentage;
+        
+        if(Roles.advisor == role){
+            rolePercentage =75;
+        }
+        else if(Roles.partnership == role){
+            rolePercentage =100;
+        }
+        else {
+            rolePercentage = 50;
+        }
+        return rolePercentage/participants;
+    }
 
+    function updatebalance(address user)  internal{
+        uint percentage = rewardPerRole[Shares[user].role];
+        uint dailyReward = TotalSupply *percentage /(denominator *365);
+        uint unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/day; 
+        balnaces[user] += dailyReward*unPaidDays;
+        Shares[user].lastRewardUpdateTime = block.timestamp;
+    }
+
+    
 
 }
