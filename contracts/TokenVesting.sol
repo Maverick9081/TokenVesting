@@ -44,7 +44,7 @@ contract TokenVesting is Ownable{
      *@param person is address of the person to be added to vesting
      *@param role is role to dedicate the person
      */
-    function addReceipient(address person,Roles role)public onlyOwner {
+    function addReceipient(address person,Roles role)external onlyOwner {
         require(block.timestamp <cliff(),"Can not add receipient after the cliff period");
         uint lastRewardUpdate = Shares[person].lastRewardUpdateTime;
         require(lastRewardUpdate == 0,"receipient should not be part of the program already");
@@ -59,7 +59,7 @@ contract TokenVesting is Ownable{
      *transfers 'amount' of tokens to the caller
      *and sets the balance of the caller to '0'
      */
-    function collect() public {
+    function collect() external {
         require(block.timestamp > cliff(), "Cliff period is not over yet");
         updatebalance(msg.sender);
         uint amount = balnaces[msg.sender];
@@ -105,33 +105,26 @@ contract TokenVesting is Ownable{
         uint dailyReward = TotalSupply *percentage /(denominator *365);
 
         if(block.timestamp >vestingDuration()){
-            unPaidDays = (vestingDuration() - Shares[user].lastRewardUpdateTime)/day(); 
+            unPaidDays = (vestingDuration() - Shares[user].lastRewardUpdateTime)/1 days; 
         }
         else {
-            unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/day();
+            unPaidDays = (block.timestamp - Shares[user].lastRewardUpdateTime)/1 days;
         } 
         balnaces[user] += dailyReward*unPaidDays;
-        Shares[user].lastRewardUpdateTime += (unPaidDays*day());
-    }
-
-    /**
-     *@dev Returns seconds of a day
-     */
-    function day() internal view returns(uint){
-        return 86400;
+        Shares[user].lastRewardUpdateTime += (unPaidDays*(1 days));
     }
 
     /**
      *@dev Returns the cliff time of the contract
      */
     function cliff() internal view returns(uint){
-        return startTime + (90 * day());
+        return startTime + (90 days);
     }
     
     /**
      *dev Returns the vesting period for the tokens
      */
     function vestingDuration() internal view returns(uint){
-        return cliff() + (365 *day());
+        return cliff() + (365 days);
     }
 }
