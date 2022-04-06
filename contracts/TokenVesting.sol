@@ -9,7 +9,7 @@ contract TokenVesting is Ownable{
 
     uint private TotalSupply = 1e26;
     uint private denominator = 1000;
-    uint private startTime = block.timestamp;
+    uint private startTime;
     IERC20 public NiceToken;
 
     
@@ -20,6 +20,7 @@ contract TokenVesting is Ownable{
      */
     constructor(IERC20 token) Ownable(){
         NiceToken = IERC20(token);
+        startTime = block.timestamp;
     }
 
     enum Roles { 
@@ -38,6 +39,9 @@ contract TokenVesting is Ownable{
     mapping(address =>uint) public balnaces;
     mapping(Roles=>uint) public rewardPerRole;
 
+    event TokenClaimed(address indexed by ,uint amount);
+    event newReceipientAdded(address indexed receipient, Roles role);
+
     /**
      *@dev adds new Receipient to vesting according to role
      *
@@ -51,7 +55,8 @@ contract TokenVesting is Ownable{
         Shares[person].role = role;
         roles[role]++;
         rewardPerRole[role] = getNewPercentage(role);
-        Shares[person].lastRewardUpdateTime = cliff();   
+        Shares[person].lastRewardUpdateTime = cliff();
+        emit newReceipientAdded(person, role);   
     }
 
     /**
@@ -67,7 +72,18 @@ contract TokenVesting is Ownable{
         unchecked{
             NiceToken.transfer(msg.sender,amount);
         }
-        balnaces[msg.sender] = 0; 
+        balnaces[msg.sender] = 0;
+
+        emit TokenClaimed(msg.sender, amount);
+    }
+
+    /**
+     *@dev Returns amount of token a user can claim
+     */
+    function viewClaimableRewards() external returns(uint) {
+        updatebalance(msg.sender);
+        uint amount = balnaces[msg.sender];
+        return amount;
     }
 
     /**
