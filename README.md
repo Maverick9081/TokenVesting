@@ -1,6 +1,6 @@
 # TokenVesting
 
-Deployed TokenVesting conract address : 0xaDd8b0dFBF2f7fFF5A85397A24aBD0c9f30f391F
+Deployed TokenVesting conract address : 0xC7b7d70d1EB506e1c5099Cd8594b496E1BE95c3E
 
 Deployed Token address : 0x195EF29228E478f3c12C93592F7C9FF9c7844Bd9
 
