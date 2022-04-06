@@ -25,7 +25,8 @@ describe("Distribution per role",async function(){
     const [owner, add1,add2] = await ethers.getSigners();
 
     await tokenVesting.addReceipient(add1.address,0);
-    await tokenVesting.collect();
+    await hre.network.provider.send("evm_increaseTime",[39312000]);
+    await tokenVesting.connect(add1).collect();
     expect(await niceToken.balanceOf(vestingAddress)).to.equal("92500000000000000000000190");
   })
 
@@ -33,6 +34,7 @@ describe("Distribution per role",async function(){
     const [owner, add1,add2] = await ethers.getSigners();
 
     await tokenVesting.addReceipient(add1.address,1);
+    await hre.network.provider.send("evm_increaseTime",[39312000]);
     await tokenVesting.connect(add1).collect();
     expect(await niceToken.balanceOf(add1.address)).to.equal("9999999999999999999999990");
     expect(await niceToken.balanceOf(vestingAddress)).to.equal("90000000000000000000000010");
@@ -43,6 +45,7 @@ describe("Distribution per role",async function(){
 
     await tokenVesting.addReceipient(add1.address,1);
     await tokenVesting.addReceipient(add2.address,1);
+    await hre.network.provider.send("evm_increaseTime",[39312000]);
     await tokenVesting.connect(add1).collect();
     await tokenVesting.connect(add2).collect();
     expect(await niceToken.balanceOf(add1.address)).to.equal(await niceToken.balanceOf(add2.address));
@@ -54,11 +57,13 @@ describe("Distribution per role",async function(){
 
     await tokenVesting.addReceipient(add1.address,1);
     await tokenVesting.addReceipient(add2.address,1);
+    await tokenVesting.addReceipient(add.address,0);
+    await tokenVesting.addReceipient(add3.address,0);
+    await hre.network.provider.send("evm_increaseTime",[39312000]);
     await tokenVesting.connect(add1).collect();
     await tokenVesting.connect(add2).collect();
     expect(await niceToken.balanceOf(add1.address)).to.equal(await niceToken.balanceOf(add2.address));
-    await tokenVesting.addReceipient(add.address,0);
-    await tokenVesting.addReceipient(add3.address,0);
+    
     await tokenVesting.connect(add).collect();
     await tokenVesting.connect(add3).collect();
     expect(await niceToken.balanceOf(add.address)).to.equal(await niceToken.balanceOf(add3.address));
@@ -85,17 +90,17 @@ describe("Revertion Tests", async function(){
 
   it ("should revert when owner tries to add participant after the cliff period",async function(){
     const [add] = await ethers.getSigners();
-
+    await hre.network.provider.send("evm_increaseTime",[7776000]);
     await expect(tokenVesting.addReceipient(add.address,0)).to.be.revertedWith("Can not add receipient after the cliff period")
   })
 
   it ("should revert when someone tries to withdraw 0 balance",async function(){
     const [add] = await ethers.getSigners();
-
+    await hre.network.provider.send("evm_increaseTime",[7776000])
     await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Can't withdraw 0 tokens");
   })
   
-  it("should revert if someone tries to collec reward before cliff period ends",async function(){
+  it("should revert if someone tries to collect reward before cliff period ends",async function(){
     const [add] = await ethers.getSigners();
 
     await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Cliff period is not over yet")
