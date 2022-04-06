@@ -81,6 +81,7 @@ contract TokenVesting is Ownable{
      *@dev Returns amount of token a user can claim
      */
     function viewClaimableRewards() external returns(uint) {
+        require(block.timestamp > cliff(),"Cliff period is not over");
         updatebalance(msg.sender);
         uint amount = balnaces[msg.sender];
         return amount;
