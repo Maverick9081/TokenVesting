@@ -70,7 +70,17 @@ describe("Distribution per role",async function(){
     expect(await niceToken.balanceOf(vestingAddress)).to.equal("82600000000000000000000470");
 })
 
-})
+  it("distributes right reward for given time",async function(){
+    const [add, add1,add2,add3] = await ethers.getSigners();
+
+    await tokenVesting.addReceipient(add1.address,1);
+    await tokenVesting.addReceipient(add2.address,1);
+    await hre.network.provider.send("evm_increaseTime",[7862400]); //one day past cliff
+    await tokenVesting.connect(add1).collect();
+    expect(await niceToken.balanceOf(add1.address)).to.equal("13698630136986301369863");
+  })
+  })
+
 
 describe("Revertion Tests", async function(){
 
