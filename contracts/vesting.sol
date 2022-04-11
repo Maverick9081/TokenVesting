@@ -9,7 +9,6 @@ contract TokenVesting is Ownable{
 
     uint private denominator = 1000;
     IERC20 public NiceToken;
-    uint private totalSupply;
 
     
     /**
@@ -19,7 +18,6 @@ contract TokenVesting is Ownable{
      */
     constructor(IERC20 token,uint Supply) Ownable(){
         NiceToken = IERC20(token);
-        totalSupply = Supply;
     }
 
     enum Roles { 
