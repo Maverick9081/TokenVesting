@@ -28,5 +28,5 @@ To deploy contract the contract
 4) run the following command to deploy the contract :
     npx hardhat deployTokenVesting
 
-5)run the following command to run tests  : 
+5) run the following command to run tests  : 
     npx hardhat test 
