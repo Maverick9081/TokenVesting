@@ -27,7 +27,7 @@ contract TokenVesting is Ownable{
         partnership,
         mentor
     }
-        
+ 
     struct Vesting {
         Roles role;
         uint startTime;
@@ -49,6 +49,14 @@ contract TokenVesting is Ownable{
     event TokenClaimed(address indexed by ,uint amount);
     event newRecipientAdded(address indexed recipient, Roles role,uint totalAmount,uint duration,uint cliff);
 
+    /// @notice Add a new beneficiary to the vesting 
+
+    /// @param beneficiary address of the beneficiary to be added to vesting 
+    /// @param role role of the beneficiary
+    /// @param startTime start time of vesting after adding the beneficiary In Days
+    /// @param cliff cliff time between start time and vesting time
+    /// @param totalAmount total Amount of tokens to be vested
+    /// @param duration duration of vesting after the cliff period   
     function addVesting(
         address beneficiary,
         Roles role,
@@ -76,7 +84,11 @@ contract TokenVesting is Ownable{
         );
         emit newRecipientAdded(beneficiary, role, totalAmount,duration,cliff);
     }
-
+    /**
+     *@dev updates the balance of user according to their total amount and role
+     *
+     *@param user address of the user
+     */
     function updateBalance(address user) internal {
         if(VestingSchedule[user].revoked){
             return;
@@ -147,14 +159,21 @@ contract TokenVesting is Ownable{
         uint amount = Balances[msg.sender];
         return amount;
     }
-
+    
+    /**
+     *Returns daily claimable tokens for that user 
+     */
     function tokensToBeClaimedDaily(address user) public  view returns (uint) {
         uint totalAmount = VestingSchedule[user].totalAmount;
         uint tgeAmount = (totalAmount * VestingSchedule[user].tgePercentage)/denominator;
         uint dailyReward = (totalAmount-tgeAmount)/VestingSchedule[user].duration;
         return dailyReward;
     }
-
+    /**
+     *@dev revokes vesting of the user 
+     *
+     *@param beneficiary address of the beneficiary 
+     */
     function revokeVesting(address beneficiary) external onlyOwner {
         require(!VestingSchedule[beneficiary].revoked,"vesting schedule should not be reovked already");
         updateBalance(beneficiary);
@@ -183,6 +202,14 @@ contract TokenVesting is Ownable{
         }
         return rolePercentage;
     }
+    /**
+     *@dev checks if the total amount and duration ration is big enough
+     *to ensure daily rewards   
+     *
+     *Returns bool
+     *@param totalAmount total amount of tokens to be vested
+     *@param duration duration of vesting after the cliff period   
+     */
 
     function getMinimumAmount(uint totalAmount,uint duration) internal pure returns(bool){
         if(totalAmount/duration >= 2){
