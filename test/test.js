@@ -2,17 +2,18 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 let tokenVesting;
 let niceToken;
+let add1;
+let add2;
 
 beforeEach(async function(){
-  const [owner, add1,add2] = await ethers.getSigners();
+  const [add1,add2] = await ethers.getSigners();
 
   const token = await ethers.getContractFactory("NiceToken");
   niceToken = await token.deploy();
   tokenAddress = niceToken.address;
 
-
   const vesting = await ethers.getContractFactory("TokenVesting");
-  tokenVesting = await vesting.deploy(tokenAddress);
+  tokenVesting = await vesting.deploy(tokenAddress,10000);
   vestingAddress = tokenVesting.address;
 
   niceToken.transfer(vestingAddress,"100000000000000000000000000");
@@ -21,99 +22,104 @@ beforeEach(async function(){
 
 describe("Distribution per role",async function(){
 
-  it("Distributes right amont to role 0", async function(){
+  it("Daily reward distribution", async function(){
+
+    const [add1,add2] = await ethers.getSigners();
+    await tokenVesting.addVesting(add1.address,1,0,5,200,50);
+    await tokenVesting.connect(add1).collect(15);
+    expect(await niceToken.balanceOf(add1.address)).to.equal("15");
+    await hre.network.provider.send("evm_increaseTime",[519500]);
+    const daily = await tokenVesting.connect(add1).tokensToBeClaimedDaily(add1.address);
+    await tokenVesting.connect(add1).collect(daily);
+    expect(await niceToken.balanceOf(add1.address)).to.equal(18);
+
+  }) 
+
+  it("Distribution after 5 days of cliff",async function(){
     const [owner, add1,add2] = await ethers.getSigners();
 
-    await tokenVesting.addReceipient(add1.address,0);
-    await hre.network.provider.send("evm_increaseTime",[39312000]);
-    await tokenVesting.connect(add1).collect();
-    expect(await niceToken.balanceOf(vestingAddress)).to.equal("92500000000000000000000190");
+    await tokenVesting.addVesting(add1.address,1,0,5,200,50);
+    await tokenVesting.connect(add1).collect(20);
+    expect(await niceToken.balanceOf(add1.address)).to.equal("20");
+    await hre.network.provider.send("evm_increaseTime",[864000]);
+    const daily = await tokenVesting.connect(add1).tokensToBeClaimedDaily(add1.address);
+    await tokenVesting.connect(add1).collect(15);
+    expect(await niceToken.balanceOf(add1.address)).to.equal(35);
   })
 
-  it("Distributes right amount to role 1",async function(){
+  it("After the reward duration ",async function(){
     const [owner, add1,add2] = await ethers.getSigners();
 
-    await tokenVesting.addReceipient(add1.address,1);
-    await hre.network.provider.send("evm_increaseTime",[39312000]);
-    await tokenVesting.connect(add1).collect();
-    expect(await niceToken.balanceOf(add1.address)).to.equal("9999999999999999999999990");
-    expect(await niceToken.balanceOf(vestingAddress)).to.equal("90000000000000000000000010");
+    await tokenVesting.addVesting(add1.address,1,0,5,200,50);
+    await tokenVesting.connect(add1).collect(20);
+    expect(await niceToken.balanceOf(add1.address)).to.equal("20");
+    await hre.network.provider.send("evm_increaseTime",[4752000]);
+    const daily = await tokenVesting.connect(add1).tokensToBeClaimedDaily(add1.address);
+    await tokenVesting.connect(add1).collect(180);
+    expect(await niceToken.balanceOf(add1.address)).to.equal(200);
   })
 
-  it("Reward splits as number of particapants increse for a role",async function(){
-    const [owner, add1,add2] = await ethers.getSigners();
+//   it("Multiple roles reward distribution",async function(){
+//     const [add, add1,add2,add3] = await ethers.getSigners();
 
-    await tokenVesting.addReceipient(add1.address,1);
-    await tokenVesting.addReceipient(add2.address,1);
-    await hre.network.provider.send("evm_increaseTime",[39312000]);
-    await tokenVesting.connect(add1).collect();
-    await tokenVesting.connect(add2).collect();
-    expect(await niceToken.balanceOf(add1.address)).to.equal(await niceToken.balanceOf(add2.address));
-    expect(await niceToken.balanceOf(vestingAddress)).to.equal("90000000000000000000000010");
-  })
-
-  it("Multiple roles reward distribution",async function(){
-    const [add, add1,add2,add3] = await ethers.getSigners();
-
-    await tokenVesting.addReceipient(add1.address,1);
-    await tokenVesting.addReceipient(add2.address,1);
-    await tokenVesting.addReceipient(add.address,0);
-    await tokenVesting.addReceipient(add3.address,0);
-    await hre.network.provider.send("evm_increaseTime",[39312000]);
-    await tokenVesting.connect(add1).collect();
-    await tokenVesting.connect(add2).collect();
-    expect(await niceToken.balanceOf(add1.address)).to.equal(await niceToken.balanceOf(add2.address));
+//     await tokenVesting.addReceipient(add1.address,1);
+//     await tokenVesting.addReceipient(add2.address,1);
+//     await tokenVesting.addReceipient(add.address,0);
+//     await tokenVesting.addReceipient(add3.address,0);
+//     await hre.network.provider.send("evm_increaseTime",[39312000]);
+//     await tokenVesting.connect(add1).collect();
+//     await tokenVesting.connect(add2).collect();
+//     expect(await niceToken.balanceOf(add1.address)).to.equal(await niceToken.balanceOf(add2.address));
     
-    await tokenVesting.connect(add).collect();
-    await tokenVesting.connect(add3).collect();
-    expect(await niceToken.balanceOf(add.address)).to.equal(await niceToken.balanceOf(add3.address));
-    expect(await niceToken.balanceOf(vestingAddress)).to.equal("82600000000000000000000470");
-})
+//     await tokenVesting.connect(add).collect();
+//     await tokenVesting.connect(add3).collect();
+//     expect(await niceToken.balanceOf(add.address)).to.equal(await niceToken.balanceOf(add3.address));
+//     expect(await niceToken.balanceOf(vestingAddress)).to.equal("82600000000000000000000470");
+// })
 
-  it("distributes right reward for given time",async function(){
-    const [add, add1,add2,add3] = await ethers.getSigners();
+  // it("distributes right reward for given time",async function(){
+  //   const [add, add1,add2,add3] = await ethers.getSigners();
 
-    await tokenVesting.addReceipient(add1.address,1);
-    await tokenVesting.addReceipient(add2.address,1);
-    await hre.network.provider.send("evm_increaseTime",[7862400]); //one day past cliff
-    await tokenVesting.connect(add1).collect();
-    expect(await niceToken.balanceOf(add1.address)).to.equal("13698630136986301369863");
+  //   await tokenVesting.addReceipient(add1.address,1);
+  //   await tokenVesting.addReceipient(add2.address,1);
+  //   await hre.network.provider.send("evm_increaseTime",[7862400]); //one day past cliff
+  //   await tokenVesting.connect(add1).collect();
+  //   expect(await niceToken.balanceOf(add1.address)).to.equal("13698630136986301369863");
   })
-  })
+  // })
 
 
-describe("Revertion Tests", async function(){
+describe("Revert Tests", async function(){
 
   it("should revert when someone other than owner tries to add participant", async function(){
     const [add1] = await ethers.getSigners();
-    
-    expect( tokenVesting.connect(add1).addReceipient(add1.address,1)).to.be.revertedWith("Ownable: caller is not the owner");
+    expect( tokenVesting.connect(add1).addVesting(add1.address,1,0,8,200,500)).to.be.revertedWith("Ownable: caller is not the owner");
   })
 
-  it("should revert when adding same particapnt twice ",async function(){
+  it("should revert when adding same beneficiary twice ",async function(){
     const [add1] = await ethers.getSigners();
     
-    await tokenVesting.addReceipient(add1.address,1);
-    await expect( tokenVesting.addReceipient(add1.address,0)).to.be
-          .revertedWith("receipient should not be part of the program already");
+    await tokenVesting.addVesting(add1.address,0,9,8,2000,500);
+    await expect( tokenVesting.addVesting(add1.address,0,8,8,200,50)).to.be
+          .revertedWith("Beneficiary already have a vesting Schedule");
   })
 
-  it ("should revert when owner tries to add participant after the cliff period",async function(){
+  it ("should revert when Total amount is low w.r.t the vesting duration",async function(){
     const [add] = await ethers.getSigners();
-    await hre.network.provider.send("evm_increaseTime",[7776000]);
-    await expect(tokenVesting.addReceipient(add.address,0)).to.be.revertedWith("Can not add receipient after the cliff period")
+    
+    await expect(tokenVesting.addVesting(add.address,0,8,8,200,500)).to.be.revertedWith("Entered Amount is too low w.r.t duration")
   })
 
   it ("should revert when someone tries to withdraw 0 balance",async function(){
     const [add] = await ethers.getSigners();
-    await hre.network.provider.send("evm_increaseTime",[7776000])
-    await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Can't withdraw 0 tokens");
+
+    await expect(tokenVesting.connect(add).collect(0)).to.be.revertedWith("Can't withdraw 0 tokens");
   })
   
-  it("should revert if someone tries to collect reward before cliff period ends",async function(){
+  it("should revert if someone tries to collect balance they don't have",async function(){
     const [add] = await ethers.getSigners();
 
-    await expect(tokenVesting.connect(add).collect()).to.be.revertedWith("Cliff period is not over yet")
+    await expect(tokenVesting.connect(add).collect(50)).to.be.revertedWith("Not enough balance to withdraw")
   })
 
 })
