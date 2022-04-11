@@ -17,9 +17,9 @@ contract TokenVesting is Ownable{
      *
      *@param token address s of token to distribute during vesting
      */
-    constructor(IERC20 token,uint totalSupply) Ownable(){
+    constructor(IERC20 token,uint Supply) Ownable(){
         NiceToken = IERC20(token);
-        totalSupply = totalSupply;
+        totalSupply = Supply;
     }
 
     enum Roles { 
@@ -38,6 +38,7 @@ contract TokenVesting is Ownable{
         uint tgePercentage;
         uint duration;
         bool tgeClaimed;
+        bool revoked;
     }
 
     mapping(address=>Vesting) public VestingSchedule;
@@ -69,46 +70,51 @@ contract TokenVesting is Ownable{
             0,
             block.timestamp +(startTime +cliff)*1 days,
             getTgePercentage(role),
-            duration * 1 days,
+            duration,
+            false,
             false
         );
         emit newRecipientAdded(beneficiary, role, totalAmount,duration,cliff);
     }
 
     function updateBalance(address user) internal {
-        uint time = VestingSchedule[user].cliff;
+        if(!VestingSchedule[user].reovked){
 
-        if(block.timestamp < time && VestingSchedule[user].tgeClaimed == false){
-            uint amount = VestingSchedule[user].totalAmount *VestingSchedule[user].tgePercentage /denominator;
-            Balances[user] += amount;
+        
+            uint time = VestingSchedule[user].cliff;
+            if(block.timestamp < time && VestingSchedule[user].tgeClaimed == false){
+                uint amount = VestingSchedule[user].totalAmount *VestingSchedule[user].tgePercentage /denominator;
+                Balances[user] += amount;
 
-            VestingSchedule[user].vestedAmount += amount;
-            VestingSchedule[user].tgeClaimed = true;
-        }
+                VestingSchedule[user].vestedAmount += amount;
+                VestingSchedule[user].tgeClaimed = true;
+            }
 
-        else if(block.timestamp > time && block.timestamp < time+ VestingSchedule[user].duration) {
+            else if(block.timestamp > time && block.timestamp < time+ VestingSchedule[user].duration*1 days) {
                 if(VestingSchedule[user].tgeClaimed ==false)
                 {
                     uint tgeAmount = VestingSchedule[user].totalAmount * VestingSchedule[user].tgePercentage / denominator;
                     Balances[user] += tgeAmount;
                     VestingSchedule[user].tgeClaimed = true;
                 }
-            uint dailyReward = tokensToBeClaimedDaily(user);
-            uint unPaidDays = (block.timestamp-VestingSchedule[user].lastRewardUpdateTime)/1 days; 
-            uint amount = dailyReward * unPaidDays;
-            Balances[user] += amount;
+                uint dailyReward = tokensToBeClaimedDaily(user);
+                uint unPaidDays = (block.timestamp-VestingSchedule[user].lastRewardUpdateTime)/1 days; 
+                uint amount = dailyReward * unPaidDays;
+                Balances[user] += amount;
 
-            VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
-            VestingSchedule[user].vestedAmount += amount; 
-        }
+                VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
+                VestingSchedule[user].vestedAmount += amount; 
+            }
 
-        else if(block.timestamp > time + VestingSchedule[user].duration)
-        {
-            uint amount = VestingSchedule[user].totalAmount - VestingSchedule[user].vestedAmount;
-            Balances[user] = amount;
+            else if(block.timestamp > time + VestingSchedule[user].duration)
+            {
+                uint amount = VestingSchedule[user].totalAmount - VestingSchedule[user].vestedAmount;
+                Balances[user] = amount;
 
-            VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
-            VestingSchedule[user].vestedAmount += amount;     
+                VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
+                VestingSchedule[user].vestedAmount += amount;     
+            }
+            return;
         }
         return;
     }
@@ -118,15 +124,17 @@ contract TokenVesting is Ownable{
      *transfers 'amount' of tokens to the caller
      *and sets the balance of the caller to '0'
      */
-    function collect() external {
-
+    function collect(uint amount) external {
+        
+        require(amount >0,"Can't withdraw 0 tokens");
         updateBalance(msg.sender);
-        uint amount = Balances[msg.sender];
-        require(amount >0,"Can't withdraw 0 tokens"); 
+        uint withdrawAbleAmount = Balances[msg.sender];
+        require(amount <=withdrawAbleAmount,"Not enough balance to withdraw");
+         
         unchecked{
             NiceToken.transfer(msg.sender,amount);
         }
-        Balances[msg.sender] = 0;
+        Balances[msg.sender] -= amount;
 
         emit TokenClaimed(msg.sender, amount);
     }
@@ -146,6 +154,13 @@ contract TokenVesting is Ownable{
         uint dailyReward = (totalAmount-tgeAmount)/VestingSchedule[user].duration;
         return dailyReward;
     }
+
+    function revokeVesting(address beneficiary) external onlyOwner {
+        require(!VestingSchedule[beneficiary].revoked,"vesting schedule should not be reovked already");
+        updateBalance(beneficiary);
+        VestingSchedule[beneficiary].revoked = true;
+    }
+
     /**
      *@dev updates the percentage of tokens for a role 
      *as a new user joins vesting with that role
@@ -154,7 +169,7 @@ contract TokenVesting is Ownable{
      *   
      *@param role role of the new recipient  
     */
-    function getTgePercentage(Roles role) internal view returns (uint) {
+    function getTgePercentage(Roles role) internal pure returns (uint) {
         uint rolePercentage;
         
         if(Roles.advisor == role){
@@ -169,8 +184,8 @@ contract TokenVesting is Ownable{
         return rolePercentage;
     }
 
-    function getMinimumAmount(uint totalAmount,uint duration) internal returns(bool){
-        if(totalAmount/(duration *1 days) >=2){
+    function getMinimumAmount(uint totalAmount,uint duration) internal pure returns(bool){
+        if(totalAmount/duration >= 2){
             return true;
         }
         else{
