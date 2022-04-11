@@ -17,16 +17,16 @@ Vesting Time : 365 days
 
 To deploy contract the contract
 
-1) Clone this repo using  this command
+1) Clone this repo using  this command : 
         git clone https://github.com/Maverick9081/TokenVesting.git
 
-2) Install required dependencies using 
+2) Install required dependencies using :
         npm install --save
 
 3) setup .env file as shown in .env.example
 
-4) run the following command to deploy the contract
+4) run the following command to deploy the contract :
     npx hardhat deployTokenVesting
 
-5)run the following command to run tests      
+5)run the following command to run tests  : 
     npx hardhat test 
