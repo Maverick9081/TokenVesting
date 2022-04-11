@@ -16,7 +16,7 @@ contract TokenVesting is Ownable{
      *
      *@param token address s of token to distribute during vesting
      */
-    constructor(IERC20 token,uint Supply) Ownable(){
+    constructor(IERC20 token) Ownable(){
         NiceToken = IERC20(token);
     }
 
