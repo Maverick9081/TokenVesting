@@ -78,45 +78,45 @@ contract TokenVesting is Ownable{
     }
 
     function updateBalance(address user) internal {
-        if(!VestingSchedule[user].reovked){
-
-        
-            uint time = VestingSchedule[user].cliff;
-            if(block.timestamp < time && VestingSchedule[user].tgeClaimed == false){
-                uint amount = VestingSchedule[user].totalAmount *VestingSchedule[user].tgePercentage /denominator;
-                Balances[user] += amount;
-
-                VestingSchedule[user].vestedAmount += amount;
-                VestingSchedule[user].tgeClaimed = true;
-            }
-
-            else if(block.timestamp > time && block.timestamp < time+ VestingSchedule[user].duration*1 days) {
-                if(VestingSchedule[user].tgeClaimed ==false)
-                {
-                    uint tgeAmount = VestingSchedule[user].totalAmount * VestingSchedule[user].tgePercentage / denominator;
-                    Balances[user] += tgeAmount;
-                    VestingSchedule[user].tgeClaimed = true;
-                }
-                uint dailyReward = tokensToBeClaimedDaily(user);
-                uint unPaidDays = (block.timestamp-VestingSchedule[user].lastRewardUpdateTime)/1 days; 
-                uint amount = dailyReward * unPaidDays;
-                Balances[user] += amount;
-
-                VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
-                VestingSchedule[user].vestedAmount += amount; 
-            }
-
-            else if(block.timestamp > time + VestingSchedule[user].duration)
-            {
-                uint amount = VestingSchedule[user].totalAmount - VestingSchedule[user].vestedAmount;
-                Balances[user] = amount;
-
-                VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
-                VestingSchedule[user].vestedAmount += amount;     
-            }
+        if(VestingSchedule[user].revoked){
             return;
         }
+        
+        uint time = VestingSchedule[user].cliff;
+        if(block.timestamp < time && VestingSchedule[user].tgeClaimed == false){
+            uint amount = VestingSchedule[user].totalAmount *VestingSchedule[user].tgePercentage /denominator;
+            Balances[user] += amount;
+
+            VestingSchedule[user].vestedAmount += amount;
+            VestingSchedule[user].tgeClaimed = true;
+        }
+
+        else if(block.timestamp > time && block.timestamp < time+ VestingSchedule[user].duration*1 days) {
+            if(VestingSchedule[user].tgeClaimed ==false)
+            {
+                uint tgeAmount = VestingSchedule[user].totalAmount * VestingSchedule[user].tgePercentage / denominator;
+                Balances[user] += tgeAmount;
+                VestingSchedule[user].tgeClaimed = true;
+            }
+            uint dailyReward = tokensToBeClaimedDaily(user);
+            uint unPaidDays = (block.timestamp-VestingSchedule[user].lastRewardUpdateTime)/1 days; 
+            uint amount = dailyReward * unPaidDays;    
+            Balances[user] += amount;
+
+            VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
+            VestingSchedule[user].vestedAmount += amount; 
+        }
+
+        else if(block.timestamp > time + VestingSchedule[user].duration)
+        {
+            uint amount = VestingSchedule[user].totalAmount - VestingSchedule[user].vestedAmount;
+            Balances[user] = amount;
+
+            VestingSchedule[user].lastRewardUpdateTime = block.timestamp;
+            VestingSchedule[user].vestedAmount += amount;     
+        }
         return;
+        
     }
 
     /**
