@@ -13,7 +13,7 @@ beforeEach(async function(){
   tokenAddress = niceToken.address;
 
   const vesting = await ethers.getContractFactory("TokenVesting");
-  tokenVesting = await vesting.deploy(tokenAddress,10000);
+  tokenVesting = await vesting.deploy(tokenAddress);
   vestingAddress = tokenVesting.address;
 
   niceToken.transfer(vestingAddress,"100000000000000000000000000");
@@ -59,6 +59,8 @@ describe("Distribution per role",async function(){
     expect(await niceToken.balanceOf(add1.address)).to.equal(200);
   })
 
+});
+
 
 describe("Revert Tests", async function(){
 
@@ -93,4 +95,4 @@ describe("Revert Tests", async function(){
     await expect(tokenVesting.connect(add).collect(50)).to.be.revertedWith("Not enough balance to withdraw")
   })
 
-})
+});
