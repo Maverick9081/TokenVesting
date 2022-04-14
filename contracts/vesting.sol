@@ -152,10 +152,31 @@ contract TokenVesting is Ownable{
     /**
      *@dev Returns amount of token a user can claim
      */
-    function viewClaimableRewards() external returns(uint) {
-        updateBalance(msg.sender);
-        uint amount = Balances[msg.sender];
-        return amount;
+    function viewClaimableRewards(address user) public view returns(uint) {
+        
+        uint time = VestingSchedule[user].cliff;
+
+        if(block.timestamp < time ){
+            uint amount = VestingSchedule[user].totalAmount *VestingSchedule[user].tgePercentage /denominator;
+            return amount - VestingSchedule[user].vestedAmount ;           
+        }
+
+        else if(block.timestamp > time && block.timestamp < time+ VestingSchedule[user].duration*1 days) {
+            
+            uint tgeAmount = VestingSchedule[user].totalAmount * VestingSchedule[user].tgePercentage / denominator;
+            uint dailyReward = tokensToBeClaimedDaily(user);
+            uint unPaidDays = (block.timestamp-VestingSchedule[user].lastRewardUpdateTime)/1 days;
+            uint balance = Balances[user]; 
+            uint amount = (dailyReward * unPaidDays) + tgeAmount - VestingSchedule[user].vestedAmount + balance;
+            return amount;    
+        }
+
+        else if(block.timestamp > time + VestingSchedule[user].duration)
+        {
+            uint amount = VestingSchedule[user].totalAmount - VestingSchedule[user].vestedAmount;
+            return amount;
+        }
+
     }
     
     /**
@@ -173,7 +194,7 @@ contract TokenVesting is Ownable{
      *@param beneficiary address of the beneficiary 
      */
     function revokeVesting(address beneficiary) external onlyOwner {
-        require(!VestingSchedule[beneficiary].revoked,"vesting schedule should not be reovked already");
+        require(!VestingSchedule[beneficiary].revoked,"vesting schedule should not be revoked already");
         updateBalance(beneficiary);
         VestingSchedule[beneficiary].revoked = true;
     }
